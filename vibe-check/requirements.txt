@@ -1,0 +1,30 @@
+# Vibe Check - Emotion Detection Dashboard
+# Python ML Service Requirements
+
+# Core ML
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Computer Vision
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+
+# Data Processing
+pandas>=2.1.0
+pydantic-settings>=2.1.0
+
+# Logging
+loguru>=0.7.0
+
+# Dataset Download
+kaggle>=1.5.16
+
+# Web Server (for Next.js communication)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+python-multipart>=0.0.6
+websockets>=12.0
+
+# Optional: MLflow for experiment tracking
+mlflow>=2.9.0

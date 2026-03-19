@@ -1,0 +1,8 @@
+{
+  "name": "vibe-check-ml-service",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "cd ../vibe-check && python -m uvicorn app.api:app --host 0.0.0.0 --port 5000 --reload"
+  }
+}
