@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -586,11 +586,28 @@ export default function VibeCheckDashboard() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/60 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Brain className="w-8 h-8 text-emerald-400" />
+            <div className="flex items-center gap-4">
+              <svg width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0px 0px 8px rgba(88, 166, 255, 0.5))' }}>
+                <defs>
+                  <linearGradient id="primaryGrad" x1="0" y1="0" x2="48" y2="48">
+                    <stop stopColor="#a371f7" />
+                    <stop offset="1" stopColor="#58a6ff" />
+                  </linearGradient>
+                  <linearGradient id="secondaryGrad" x1="48" y1="0" x2="0" y2="48">
+                    <stop stopColor="#58a6ff" />
+                    <stop offset="1" stopColor="rgba(88, 166, 255, 0.2)" />
+                  </linearGradient>
+                </defs>
+                <path d="M12 14 L24 38 L36 14" stroke="url(#primaryGrad)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M18 24 L26 32 L42 8" stroke="url(#secondaryGrad)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="24" cy="38" r="4" fill="#ffffff" />
+              </svg>
               <div>
-                <h1 className="text-xl font-semibold">Vibe Check</h1>
-                <p className="text-xs text-white/60">Real-time Emotion Detection</p>
+                <h1 className="text-2xl font-bold tracking-wider m-0 leading-tight">
+                  <span className="bg-gradient-to-r from-[#58a6ff] to-[#a371f7] bg-clip-text text-transparent">Vibe</span>
+                  <span className="text-white font-light">Check</span>
+                </h1>
+                <p className="text-[10px] text-[#58a6ff]/80 uppercase tracking-[0.2em] font-medium mt-1">AI Emotion Engine</p>
               </div>
             </div>
             
@@ -797,7 +814,7 @@ export default function VibeCheckDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {Object.entries(history.emotion_distribution)
+                    {(Object.entries(history.emotion_distribution) as [string, number][])
                       .sort(([, a], [, b]) => b - a)
                       .map(([emotion, count]) => (
                         <div key={emotion} className="flex items-center gap-2">

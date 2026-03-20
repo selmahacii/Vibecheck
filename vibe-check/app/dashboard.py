@@ -302,7 +302,35 @@ def run_dashboard():
     eyes    = st.session_state.eyes
     hist    = st.session_state.history
 
-    st.markdown("<h2 style='font-size: 1.5rem; font-weight: 600; color: #c9d1d9; padding-bottom: 20px; border-bottom: 1px solid #30363d; margin-bottom: 25px;'>Vibe Check Engine</h2>", unsafe_allow_html=True)
+    logo_svg = """
+    <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 8px rgba(88, 166, 255, 0.4));">
+      <defs>
+        <linearGradient id="primaryGrad" x1="0" y1="0" x2="48" y2="48">
+          <stop stop-color="#a371f7"/>
+          <stop offset="1" stop-color="#58a6ff"/>
+        </linearGradient>
+        <linearGradient id="secondaryGrad" x1="48" y1="0" x2="0" y2="48">
+          <stop stop-color="#58a6ff"/>
+          <stop offset="1" stop-color="rgba(88, 166, 255, 0.2)"/>
+        </linearGradient>
+      </defs>
+      <!-- V shape -->
+      <path d="M12 14 L24 38 L36 14" stroke="url(#primaryGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Checkmark shape interlocking -->
+      <path d="M18 24 L26 32 L42 8" stroke="url(#secondaryGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Pulsing dot -->
+      <circle cx="24" cy="38" r="4" fill="#ffffff"/>
+    </svg>
+    """
+
+    st.markdown(f"""
+        <div style='display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 24px;'>
+            {{logo_svg}}
+            <h2 style='font-size: 1.8rem; font-weight: 700; color: #e2e8f0; margin: 0; letter-spacing: 1.5px;'>
+                Vibe<span style='color: #58a6ff; font-weight: 300;'>Check</span>
+            </h2>
+        </div>
+    """.replace("{logo_svg}", logo_svg), unsafe_allow_html=True)
 
     # Layout: Camera on left (3), UI on right (2)
     col_cam, col_ui = st.columns([3, 2], gap="large")
