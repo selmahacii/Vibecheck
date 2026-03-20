@@ -29,15 +29,16 @@ def build_ui_html(scores) -> str:
     
     # --- Emotio Probs ---
     emotions_html = ""
-    # Sort emotions by probability to bring highest to top
     sorted_emotions = sorted(scores.emotion_probs.items(), key=lambda x: x[1], reverse=True)
     for em_name, prob in sorted_emotions:
         width_pct = int(prob * 100)
+        # Dynamic glow effect for the dominant emotion
+        glow = "box-shadow: 0 0 10px rgba(88, 166, 255, 0.5);" if width_pct > 50 else ""
         emotions_html += f"""
         <div class="emotion-row">
             <div class="emotion-label">{em_name.upper()}</div>
             <div class="emotion-bar-bg">
-                <div class="emotion-bar-fill" style="width: {width_pct}%;"></div>
+                <div class="emotion-bar-fill" style="width: {width_pct}%; {glow}"></div>
             </div>
             <div class="emotion-value">{width_pct}%</div>
         </div>
@@ -56,25 +57,24 @@ def build_ui_html(scores) -> str:
     metrics_html = ""
     for label, val in metrics_data:
         val_pct = int(val * 100)
-        inverse = label in ["Stress", "Fatigue", "Arousal"] # High stress/fatigue is bad=red
-        # For valence, attention, engagement -> low is bad=red
+        inverse = label in ["Stress", "Fatigue", "Arousal"]
         color = score_color(val, inverse=inverse)
         
         metrics_html += f"""
-        <div class="metric-card">
+        <div class="metric-card glass-panel">
             <div class="metric-header">
                 <span class="metric-name">{label.upper()}</span>
-                <span class="metric-val" style="color: {color};">{val_pct}%</span>
+                <span class="metric-val" style="color: {color}; text-shadow: 0 0 8px {color}80;">{val_pct}%</span>
             </div>
             <div class="metric-progress-bg">
-                <div class="metric-progress-fill" style="width: {val_pct}%; background-color: {color};"></div>
+                <div class="metric-progress-fill" style="width: {val_pct}%; background: linear-gradient(90deg, transparent, {color}); box-shadow: 0 0 10px {color};"></div>
             </div>
         </div>
         """
         
     html = f"""
     <div class="ui-container">
-        <div class="mood-box">
+        <div class="mood-box glass-panel glowing-border">
             <div class="mood-label">{scores.mood_label.upper()}</div>
             <div class="mood-sub">DETECTED STATE</div>
         </div>
@@ -85,7 +85,7 @@ def build_ui_html(scores) -> str:
         </div>
         
         <div class="section-title">EMOTION PROBABILITIES</div>
-        <div class="emotions-list">
+        <div class="emotions-list glass-panel">
             {emotions_html}
         </div>
     </div>
@@ -100,15 +100,16 @@ def run_dashboard():
         initial_sidebar_state="collapsed",
     )
 
-    # Clean, professional dark theme
+    # Premium glassmorphism dark theme
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
+    /* Global Background Gradient */
     .stApp {
-        background-color: #0d1117;
-        color: #c9d1d9;
-        font-family: 'Inter', sans-serif;
+        background: radial-gradient(circle at 10% 20%, #0a0e17 0%, #050508 100%);
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
     }
     
     header {visibility: hidden;}
@@ -117,41 +118,62 @@ def run_dashboard():
     .ui-container {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 24px;
         padding-top: 10px;
     }
 
+    /* Glassmorphism Classes */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
     .mood-box {
-        background: #161b22;
-        border-radius: 12px;
-        border: 1px solid #30363d;
-        padding: 30px 20px;
+        border-radius: 16px;
+        padding: 35px 20px;
         text-align: center;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Subtle glowing border effect for the mood box */
+    .glowing-border::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(88,166,255,0.6), transparent);
     }
 
     .mood-label {
-        font-size: 2.2rem;
-        font-weight: 600;
-        color: #58a6ff;
-        letter-spacing: 2px;
+        font-size: 2.8rem;
+        font-weight: 700;
+        background: linear-gradient(to right, #58a6ff, #a371f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: 3px;
+        filter: drop-shadow(0 0 12px rgba(88, 166, 255, 0.3));
     }
 
     .mood-sub {
-        font-size: 0.75rem;
-        color: #8b949e;
-        letter-spacing: 1.5px;
-        margin-top: 8px;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        letter-spacing: 2px;
+        margin-top: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
     }
 
     .section-title {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         font-weight: 600;
-        color: #8b949e;
-        letter-spacing: 1.2px;
-        border-bottom: 1px solid #30363d;
-        padding-bottom: 8px;
-        margin-top: 10px;
+        color: #94a3b8;
+        letter-spacing: 1.5px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding-bottom: 10px;
+        margin-top: 5px;
     }
 
     .metrics-grid {
@@ -161,52 +183,56 @@ def run_dashboard():
     }
 
     .metric-card {
-        background: #161b22;
-        border-radius: 8px;
-        padding: 16px;
-        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 18px;
+        transition: transform 0.2s ease, background 0.2s ease;
+    }
+    
+    .metric-card:hover {
+        background: rgba(255, 255, 255, 0.04);
+        transform: translateY(-2px);
     }
 
     .metric-header {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
         align-items: center;
     }
 
     .metric-name {
-        font-size: 0.75rem;
-        color: #c9d1d9;
+        font-size: 0.8rem;
+        color: #e2e8f0;
         font-weight: 600;
         letter-spacing: 0.5px;
     }
 
     .metric-val {
-        font-size: 0.85rem;
-        font-weight: 600;
+        font-size: 0.95rem;
+        font-weight: 700;
     }
 
     .metric-progress-bg {
         width: 100%;
-        height: 4px;
-        background: #0d1117;
-        border-radius: 2px;
+        height: 6px;
+        background: rgba(0,0,0,0.4);
+        border-radius: 3px;
         overflow: hidden;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
     }
 
     .metric-progress-fill {
         height: 100%;
-        transition: width 0.1s ease;
+        border-radius: 3px;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .emotions-list {
+        border-radius: 12px;
+        padding: 24px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        background: #161b22;
-        border-radius: 8px;
-        padding: 20px;
-        border: 1px solid #30363d;
+        gap: 14px;
     }
 
     .emotion-row {
@@ -216,32 +242,43 @@ def run_dashboard():
     }
 
     .emotion-label {
-        width: 80px;
-        font-size: 0.75rem;
+        width: 85px;
+        font-size: 0.8rem;
         font-weight: 500;
-        color: #8b949e;
+        color: #cbd5e1;
+        letter-spacing: 0.5px;
     }
 
     .emotion-bar-bg {
         flex-grow: 1;
-        height: 6px;
-        background: #0d1117;
-        border-radius: 3px;
+        height: 8px;
+        background: rgba(0,0,0,0.4);
+        border-radius: 4px;
         overflow: hidden;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
     }
 
     .emotion-bar-fill {
         height: 100%;
-        background: #58a6ff;
-        transition: width 0.1s ease;
+        background: linear-gradient(90deg, #3b82f6, #58a6ff);
+        border-radius: 4px;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .emotion-value {
-        width: 40px;
+        width: 45px;
         text-align: right;
-        font-size: 0.75rem;
-        color: #c9d1d9;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #e2e8f0;
         font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    
+    /* Global st adjustments */
+    .stImage img {
+        border-radius: 12px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
     </style>
     """, unsafe_allow_html=True)
