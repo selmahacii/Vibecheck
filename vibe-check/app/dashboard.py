@@ -1,18 +1,8 @@
 """
 Real-time Streamlit dashboard.
-Layout:
-┌─────────────────────┬───────────────────────┐
-│  Live Camera Feed   │   Dominant Emotion     │
-│  with face mesh     │   + intensity bar      │
-│                     │                        │
-├─────────────────────┼────────────┬───────────┤
-│  Emotion Radar      │  Timeline  │  Scores   │
-│  Chart (7 emotions) │  (60s)     │  Panel    │
-└─────────────────────┴────────────┴───────────┘
+Optimized for high-FPS camera streaming and a professional UI.
 """
 import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
 import numpy as np
 import cv2
 import time
@@ -25,113 +15,238 @@ from src.config import settings
 from app.camera import CameraThread
 
 
-def build_radar_chart(probs: dict) -> go.Figure:
+def score_color(value: float, inverse: bool = False) -> str:
+    """Map 0-1 score to professional color palette."""
+    if inverse:
+        value = 1.0 - value
+    if value < 0.35: return '#ff4b4b'   # Coral Red
+    if value < 0.65: return '#faca2b'   # Premium Yellow
+    return '#00d289'                    # Mint Green
+
+
+def build_ui_html(scores) -> str:
+    """Builds the entire right-column UI as a single HTML block for maximum FPS."""
+    
+    # --- Emotio Probs ---
+    emotions_html = ""
+    # Sort emotions by probability to bring highest to top
+    sorted_emotions = sorted(scores.emotion_probs.items(), key=lambda x: x[1], reverse=True)
+    for em_name, prob in sorted_emotions:
+        width_pct = int(prob * 100)
+        emotions_html += f"""
+        <div class="emotion-row">
+            <div class="emotion-label">{em_name.upper()}</div>
+            <div class="emotion-bar-bg">
+                <div class="emotion-bar-fill" style="width: {width_pct}%;"></div>
+            </div>
+            <div class="emotion-value">{width_pct}%</div>
+        </div>
+        """
+        
+    # --- Psychological Metrics ---
+    metrics_data = [
+        ("Valence",    (scores.valence + 1) / 2),
+        ("Arousal",     scores.arousal),
+        ("Stress",      scores.stress),
+        ("Fatigue",     scores.fatigue),
+        ("Attention",   scores.attention),
+        ("Engagement",  scores.engagement),
+    ]
+    
+    metrics_html = ""
+    for label, val in metrics_data:
+        val_pct = int(val * 100)
+        inverse = label in ["Stress", "Fatigue", "Arousal"] # High stress/fatigue is bad=red
+        # For valence, attention, engagement -> low is bad=red
+        color = score_color(val, inverse=inverse)
+        
+        metrics_html += f"""
+        <div class="metric-card">
+            <div class="metric-header">
+                <span class="metric-name">{label.upper()}</span>
+                <span class="metric-val" style="color: {color};">{val_pct}%</span>
+            </div>
+            <div class="metric-progress-bg">
+                <div class="metric-progress-fill" style="width: {val_pct}%; background-color: {color};"></div>
+            </div>
+        </div>
+        """
+        
+    html = f"""
+    <div class="ui-container">
+        <div class="mood-box">
+            <div class="mood-label">{scores.mood_label.upper()}</div>
+            <div class="mood-sub">DETECTED STATE</div>
+        </div>
+        
+        <div class="section-title">PSYCHOLOGICAL METRICS</div>
+        <div class="metrics-grid">
+            {metrics_html}
+        </div>
+        
+        <div class="section-title">EMOTION PROBABILITIES</div>
+        <div class="emotions-list">
+            {emotions_html}
+        </div>
+    </div>
     """
-    Radar chart showing all 7 emotion probabilities.
-    Updates every frame — shows the current emotional state at a glance.
-    """
-    emotions = list(probs.keys())
-    values   = list(probs.values())
-    values.append(values[0])  # close the polygon
-    emotions.append(emotions[0])
-
-    fig = go.Figure(go.Scatterpolar(
-        r=values, theta=emotions,
-        fill='toself',
-        fillcolor='rgba(0, 255, 150, 0.15)',
-        line=dict(color='rgba(0, 255, 150, 0.8)', width=2),
-        marker=dict(size=6),
-    ))
-    fig.update_layout(
-        polar=dict(
-            bgcolor='rgba(0,0,0,0)',
-            radialaxis=dict(
-                visible=True, range=[0, 1],
-                color='rgba(255,255,255,0.3)',
-                gridcolor='rgba(255,255,255,0.1)',
-            ),
-            angularaxis=dict(color='rgba(255,255,255,0.6)'),
-        ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=False,
-        margin=dict(l=40, r=40, t=40, b=40),
-        height=280,
-    )
-    return fig
-
-
-def build_timeline_chart(history: dict, metric: str,
-                          color: str = '#00ff96') -> go.Figure:
-    """Line chart showing last 60s of a metric."""
-    values = history.get(metric, [])
-    times  = list(range(len(values)))
-
-    fig = go.Figure(go.Scatter(
-        x=times, y=values,
-        mode='lines',
-        line=dict(color=color, width=2),
-        fill='tozeroy',
-        fillcolor=color.replace(')', ',0.08)').replace('rgb', 'rgba'),
-    ))
-    fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(visible=False),
-        yaxis=dict(range=[0, 1], color='rgba(255,255,255,0.4)',
-                   gridcolor='rgba(255,255,255,0.05)'),
-        margin=dict(l=30, r=10, t=10, b=10),
-        height=120,
-    )
-    return fig
-
-
-def score_color(value: float) -> str:
-    """Map 0-1 score to hex color: green → yellow → red."""
-    if value < 0.33: return '#44ff88'
-    if value < 0.66: return '#ffcc44'
-    return '#ff4455'
+    return html
 
 
 def run_dashboard():
     st.set_page_config(
         page_title="Vibe Check",
         layout="wide",
-        page_icon="🧠",
         initial_sidebar_state="collapsed",
     )
 
-    # Dark theme CSS
+    # Clean, professional dark theme
     st.markdown("""
     <style>
-    .stApp { background: #07070f; color: #e0e0e0; }
-    .metric-card {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 10px;
-        padding: 14px 18px;
-        margin-bottom: 10px;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    .stApp {
+        background-color: #0d1117;
+        color: #c9d1d9;
+        font-family: 'Inter', sans-serif;
     }
-    .mood-label {
-        font-size: 2.5rem;
+    
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    .ui-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-top: 10px;
+    }
+
+    .mood-box {
+        background: #161b22;
+        border-radius: 12px;
+        border: 1px solid #30363d;
+        padding: 30px 20px;
         text-align: center;
-        font-weight: 300;
-        letter-spacing: 0.1em;
-        padding: 20px 0;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
     }
-    .score-label {
-        font-size: 0.7rem;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.4);
-        margin-bottom: 4px;
+
+    .mood-label {
+        font-size: 2.2rem;
+        font-weight: 600;
+        color: #58a6ff;
+        letter-spacing: 2px;
+    }
+
+    .mood-sub {
+        font-size: 0.75rem;
+        color: #8b949e;
+        letter-spacing: 1.5px;
+        margin-top: 8px;
+    }
+
+    .section-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #8b949e;
+        letter-spacing: 1.2px;
+        border-bottom: 1px solid #30363d;
+        padding-bottom: 8px;
+        margin-top: 10px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .metric-card {
+        background: #161b22;
+        border-radius: 8px;
+        padding: 16px;
+        border: 1px solid #30363d;
+    }
+
+    .metric-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        align-items: center;
+    }
+
+    .metric-name {
+        font-size: 0.75rem;
+        color: #c9d1d9;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .metric-val {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .metric-progress-bg {
+        width: 100%;
+        height: 4px;
+        background: #0d1117;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .metric-progress-fill {
+        height: 100%;
+        transition: width 0.1s ease;
+    }
+
+    .emotions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #161b22;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #30363d;
+    }
+
+    .emotion-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .emotion-label {
+        width: 80px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #8b949e;
+    }
+
+    .emotion-bar-bg {
+        flex-grow: 1;
+        height: 6px;
+        background: #0d1117;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .emotion-bar-fill {
+        height: 100%;
+        background: #58a6ff;
+        transition: width 0.1s ease;
+    }
+
+    .emotion-value {
+        width: 40px;
+        text-align: right;
+        font-size: 0.75rem;
+        color: #c9d1d9;
+        font-family: ui-monospace, SFMono-Regular, monospace;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("# 🧠 Vibe Check")
-
-    # Initialize components (cached in session state)
+    # Initialize components
     if "initialized" not in st.session_state:
         st.session_state.camera    = CameraThread()
         st.session_state.detector  = FaceDetector()
@@ -150,19 +265,18 @@ def run_dashboard():
     eyes    = st.session_state.eyes
     hist    = st.session_state.history
 
-    # ── Layout ──────────────────────────────────────────────
-    col_cam, col_right = st.columns([3, 2])
+    st.markdown("<h2 style='font-size: 1.5rem; font-weight: 600; color: #c9d1d9; padding-bottom: 20px; border-bottom: 1px solid #30363d; margin-bottom: 25px;'>Vibe Check Engine</h2>", unsafe_allow_html=True)
+
+    # Layout: Camera on left (3), UI on right (2)
+    col_cam, col_ui = st.columns([3, 2], gap="large")
 
     with col_cam:
-        cam_placeholder   = st.empty()
-        radar_placeholder = st.empty()
+        cam_placeholder = st.empty()
 
-    with col_right:
-        mood_placeholder    = st.empty()
-        scores_placeholder  = st.empty()
-        timeline_placeholder = st.empty()
+    with col_ui:
+        ui_placeholder = st.empty()
 
-    # ── Real-time loop ───────────────────────────────────────
+    # Real-time inference loop
     while True:
         frame = cam.get_frame()
         if frame is None:
@@ -173,83 +287,33 @@ def run_dashboard():
         face = detect.detect(frame)
 
         if face is not None:
-            # Draw face mesh on frame
-            frame = detect.draw_mesh(frame, face,
-                                     color=(0, 255, 150), thickness=1)
-            # Draw bounding box
+            # Render camera annotations
+            frame = detect.draw_mesh(frame, face, color=(88, 166, 255), thickness=1)
             x, y, w, h = face.bbox
-            cv2.rectangle(frame, (x,y), (x+w,y+h),
-                          (0,255,150), 1)
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (88, 166, 255), 2)
 
-            probs      = emotion.predict(frame, face)
-            eye_data   = eyes.update(face.landmarks_px, t)
-            scores     = compute_all(probs, eye_data,
-                                     list(eyes.ear_history))
+            # AI Inference
+            probs = emotion.predict(frame, face)
+            eye_data = eyes.update(face.landmarks_px, t)
+            scores = compute_all(probs, eye_data, list(eyes.ear_history))
             hist.push(scores, t)
 
-            # ── Camera feed ──────────────────────────────────
+            # Update UI Panels (Ultra-fast single DOM update)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            cam_placeholder.image(rgb, use_column_width=True,
-                                  caption="Live feed · MediaPipe FaceMesh")
-
-            # ── Mood label ───────────────────────────────────
-            mood_placeholder.markdown(
-                f'<div class="mood-label">{scores["mood_label"]}</div>',
-                unsafe_allow_html=True
-            )
-
-            # ── Emotion radar ────────────────────────────────
-            radar_placeholder.plotly_chart(
-                build_radar_chart(scores["emotion_probs"]),
-                use_container_width=True,
-                config={"displayModeBar": False}
-            )
-
-            # ── Score cards ──────────────────────────────────
-            with scores_placeholder.container():
-                metrics = [
-                    ("Valence",    (scores["valence"]+1)/2, "😊 ↔ 😢"),
-                    ("Arousal",     scores["arousal"],      "⚡ énergie"),
-                    ("Stress",      scores["stress"],       "😰 tension"),
-                    ("Fatigue",     scores["fatigue"],      "😴 épuisement"),
-                    ("Attention",   scores["attention"],    "👁 focus"),
-                    ("Engagement",  scores["engagement"],   "🎯 engagement"),
-                ]
-                cols = st.columns(3)
-                for i, (label, val, icon) in enumerate(metrics):
-                    with cols[i % 3]:
-                        color = score_color(
-                            val if label not in ["Valence","Attention","Engagement"]
-                            else 1-val
-                        )
-                        st.markdown(
-                            f'<div class="metric-card">'
-                            f'<div class="score-label">{icon} {label}</div>'
-                            f'<div style="font-size:1.6rem;color:{color};'
-                            f'font-weight:300">{val*100:.0f}%</div>'
-                            f'</div>',
-                            unsafe_allow_html=True
-                        )
-
-            # ── Timeline (stress last 60s) ───────────────────
-            with timeline_placeholder.container():
-                st.markdown("**Stress · 60s**")
-                st.plotly_chart(
-                    build_timeline_chart(
-                        hist.get_all(), "stress", '#ff6655'
-                    ),
-                    use_container_width=True,
-                    config={"displayModeBar": False}
-                )
+            cam_placeholder.image(rgb, use_container_width=True)
+            
+            ui_html = build_ui_html(scores)
+            ui_placeholder.markdown(ui_html, unsafe_allow_html=True)
 
         else:
-            # No face detected
+            # Idle State handling
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            cam_placeholder.image(rgb, use_column_width=True)
-            mood_placeholder.markdown(
-                '<div class="mood-label" style="color:rgba(255,255,255,0.2)">'
-                '🔍 Aucun visage détecté</div>',
-                unsafe_allow_html=True
-            )
+            cam_placeholder.image(rgb, use_container_width=True)
+            ui_placeholder.markdown("""
+                <div class="mood-box" style="margin-top: 20px; border-color: rgba(255,75,75,0.3);">
+                    <div class="mood-label" style="color: #ff4b4b; font-size: 1.5rem;">NO FACE DETECTED</div>
+                    <div class="mood-sub">AWAITING SUBJECT IN FRAME</div>
+                </div>
+            """, unsafe_allow_html=True)
 
-        time.sleep(0.033)  # ~30fps
+        time.sleep(0.02)  # Cap at ~50 fps

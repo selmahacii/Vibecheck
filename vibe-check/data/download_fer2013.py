@@ -89,9 +89,23 @@ def download_from_kaggle(output_dir: Path) -> Path:
     Dataset: https://www.kaggle.com/datasets/msambare/fer2013
     """
     import subprocess
+    import shutil
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
+    kaggle_executable = shutil.which("kaggle") or shutil.which("kaggle.exe")
+    if not kaggle_executable:
+        # Try finding it in user scripts if not in PATH
+        potential_scripts = Path.home() / "AppData" / "Local" / "Python" / "pythoncore-3.14-64" / "Scripts" / "kaggle.exe"
+        if potential_scripts.exists():
+            kaggle_executable = str(potential_scripts)
+    
+    if not kaggle_executable:
+        logger.error("Kaggle CLI not installed or not in PATH!")
+        logger.error("Install with: pip install kaggle")
+        raise FileNotFoundError("kaggle executable not found")
+
+    logger.info(f"Using kaggle executable: {kaggle_executable}")
     logger.info("Downloading FER2013 from Kaggle...")
     logger.info("Dataset: msambare/fer2013")
     logger.info(f"Output: {output_dir}")
@@ -99,7 +113,7 @@ def download_from_kaggle(output_dir: Path) -> Path:
     try:
         # Use kaggle API to download
         result = subprocess.run(
-            ["kaggle", "datasets", "download", 
+            [kaggle_executable, "datasets", "download", 
              "-d", "msambare/fer2013",
              "-p", str(output_dir),
              "--unzip"],

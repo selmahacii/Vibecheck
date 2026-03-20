@@ -125,6 +125,7 @@ class Settings(BaseSettings):
     class Config:
         env_prefix = "VIBE_"  # Environment variables: VIBE_CAMERA_INDEX=1
         env_file = ".env"
+        extra = "ignore"
 
 
 # Global singleton instance
