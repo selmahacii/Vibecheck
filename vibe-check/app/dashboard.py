@@ -357,7 +357,7 @@ def run_dashboard():
             x, y, w, h = face.bbox
             cv2.rectangle(frame, (x, y), (x+w, y+h), (88, 166, 255), 2)
 
-            # AI Inference
+            # Model Processing
             probs = emotion.predict(frame, face)
             eye_data = eyes.update(face.landmarks_px, t)
             scores = compute_all(probs, eye_data, list(eyes.ear_history))

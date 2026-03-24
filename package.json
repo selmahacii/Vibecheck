@@ -1,7 +1,9 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
+  "name": "vibecheck-dashboard",
   "version": "0.2.0",
   "private": true,
+  "description": "VibeCheck - Real-time emotion analysis dashboard.",
+  "author": "Selma Haci",
   "scripts": {
     "dev": "next dev -p 3005 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",

@@ -607,7 +607,7 @@ export default function VibeCheckDashboard() {
                   <span className="bg-gradient-to-r from-[#58a6ff] to-[#a371f7] bg-clip-text text-transparent">Vibe</span>
                   <span className="text-white font-light">Check</span>
                 </h1>
-                <p className="text-[10px] text-[#58a6ff]/80 uppercase tracking-[0.2em] font-medium mt-1">AI Emotion Engine</p>
+                <p className="text-[10px] text-[#58a6ff]/80 uppercase tracking-[0.2em] font-medium mt-1">Dynamic Emotion Engine</p>
               </div>
             </div>
             
